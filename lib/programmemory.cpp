@@ -57,7 +57,9 @@ std::size_t ExprIdToken::Hash::operator()(ExprIdToken etok) const
 }
 
 void ProgramMemory::setValue(const Token* expr, const ValueFlow::Value& value) {
-    mValues[expr] = value;
+    copyOnWrite();
+
+    (*mValues)[expr] = value;
     ValueFlow::Value subvalue = value;
     const Token* subexpr = solveExprValue(
         expr,
@@ -71,12 +73,12 @@ void ProgramMemory::setValue(const Token* expr, const ValueFlow::Value& value) {
     },
         subvalue);
     if (subexpr)
-        mValues[subexpr] = std::move(subvalue);
+        (*mValues)[subexpr] = std::move(subvalue);
 }
 const ValueFlow::Value* ProgramMemory::getValue(nonneg int exprid, bool impossible) const
 {
-    const ProgramMemory::Map::const_iterator it = mValues.find(exprid);
-    const bool found = it != mValues.cend() && (impossible || !it->second.isImpossible());
+    const ProgramMemory::Map::const_iterator it = mValues->find(exprid);
+    const bool found = it != mValues->cend() && (impossible || !it->second.isImpossible());
     if (found)
         return &it->second;
     return nullptr;
@@ -147,26 +149,36 @@ void ProgramMemory::setContainerSizeValue(const Token* expr, MathLib::bigint val
 }
 
 void ProgramMemory::setUnknown(const Token* expr) {
-    mValues[expr].valueType = ValueFlow::Value::ValueType::UNINIT;
+    copyOnWrite();
+
+    (*mValues)[expr].valueType = ValueFlow::Value::ValueType::UNINIT;
 }
 
 bool ProgramMemory::hasValue(nonneg int exprid)
 {
-    return mValues.find(exprid) != mValues.end();
+    return mValues->find(exprid) != mValues->end();
 }
 
 const ValueFlow::Value& ProgramMemory::at(nonneg int exprid) const {
-    return mValues.at(exprid);
+    return mValues->at(exprid);
 }
 ValueFlow::Value& ProgramMemory::at(nonneg int exprid) {
-    return mValues.at(exprid);
+    copyOnWrite();
+
+    return mValues->at(exprid);
 }
 
 void ProgramMemory::erase_if(const std::function<bool(const ExprIdToken&)>& pred)
 {
-    for (auto it = mValues.begin(); it != mValues.end();) {
+    if (mValues->empty())
+        return;
+
+    // TODO: how to delay until we actuallly modify?
+    copyOnWrite();
+
+    for (auto it = mValues->begin(); it != mValues->end();) {
         if (pred(it->first))
-            it = mValues.erase(it);
+            it = mValues->erase(it);
         else
             ++it;
     }
@@ -179,25 +191,38 @@ void ProgramMemory::swap(ProgramMemory &pm)
 
 void ProgramMemory::clear()
 {
-    mValues.clear();
+    if (mValues->empty())
+        return;
+
+    copyOnWrite();
+
+    mValues->clear();
 }
 
 bool ProgramMemory::empty() const
 {
-    return mValues.empty();
+    return mValues->empty();
 }
 
+// NOLINTNEXTLINE(performance-unnecessary-value-param) - technically correct but we are moving the given values
 void ProgramMemory::replace(ProgramMemory pm)
 {
-    for (auto&& p : pm.mValues) {
-        mValues[p.first] = std::move(p.second);
+    if (pm.empty())
+        return;
+
+    copyOnWrite();
+
+    for (auto&& p : (*pm.mValues)) {
+        (*mValues)[p.first] = std::move(p.second);
     }
 }
 
-void ProgramMemory::insert(const ProgramMemory &pm)
+void ProgramMemory::copyOnWrite()
 {
-    for (auto&& p : pm)
-        mValues.insert(p);
+    if (mValues.use_count() == 1)
+        return;
+
+    mValues = std::make_shared<Map>(*mValues);
 }
 
 static ValueFlow::Value execute(const Token* expr, ProgramMemory& pm, const Settings& settings);
@@ -446,14 +471,6 @@ static ProgramMemory getInitialProgramState(const Token* tok,
 ProgramMemoryState::ProgramMemoryState(const Settings* s) : settings(s)
 {
     assert(settings != nullptr);
-}
-
-void ProgramMemoryState::insert(const ProgramMemory &pm, const Token* origin)
-{
-    if (origin)
-        for (auto&& p : pm)
-            origins.insert(std::make_pair(p.first.getExpressionId(), origin));
-    state.insert(pm);
 }
 
 void ProgramMemoryState::replace(ProgramMemory pm, const Token* origin)
@@ -1310,7 +1327,7 @@ namespace {
         ValueFlow::Value executeMultiCondition(bool b, const Token* expr)
         {
             if (pm->hasValue(expr->exprId())) {
-                const ValueFlow::Value& v = pm->at(expr->exprId());
+                const ValueFlow::Value& v = utils::as_const(*pm).at(expr->exprId());
                 if (v.isIntValue())
                     return v;
             }
@@ -1555,12 +1572,15 @@ namespace {
 
                 return unknown();
             } else if (expr->str() == "(" && expr->isCast()) {
-                if (Token::simpleMatch(expr->previous(), ">") && expr->linkAt(-1))
-                    return execute(expr->astOperand2());
+                if (expr->astOperand2()) {
+                    if (expr->astOperand1()->str() != "dynamic_cast")
+                        return execute(expr->astOperand2());
+                    return unknown();
+                }
                 return execute(expr->astOperand1());
             }
             if (expr->exprId() > 0 && pm->hasValue(expr->exprId())) {
-                ValueFlow::Value result = pm->at(expr->exprId());
+                ValueFlow::Value result = utils::as_const(*pm).at(expr->exprId());
                 if (result.isImpossible() && result.isIntValue() && result.intvalue == 0 && isUsedAsBool(expr, *settings)) {
                     result.intvalue = !result.intvalue;
                     result.setKnown();
@@ -1676,7 +1696,7 @@ namespace {
             if (!expr)
                 return v;
             if (expr->exprId() > 0 && pm->hasValue(expr->exprId())) {
-                if (updateValue(v, pm->at(expr->exprId())))
+                if (updateValue(v, utils::as_const(*pm).at(expr->exprId())))
                     return v;
             }
             // Find symbolic values
@@ -1687,7 +1707,7 @@ namespace {
                     continue;
                 if (value.tokvalue->exprId() > 0 && !pm->hasValue(value.tokvalue->exprId()))
                     continue;
-                ValueFlow::Value v2 = pm->at(value.tokvalue->exprId());
+                ValueFlow::Value v2 = utils::as_const(*pm).at(value.tokvalue->exprId());
                 if (!v2.isIntValue() && value.intvalue != 0)
                     continue;
                 v2.intvalue += value.intvalue;

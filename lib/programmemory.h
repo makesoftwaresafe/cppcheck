@@ -1,4 +1,4 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
  * Copyright (C) 2007-2024 Cppcheck team.
  *
@@ -26,6 +26,7 @@
 #include <cstddef>
 #include <functional>
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -96,12 +97,12 @@ struct ExprIdToken {
     };
 };
 
-struct ProgramMemory {
+struct CPPCHECKLIB ProgramMemory {
     using Map = std::unordered_map<ExprIdToken, ValueFlow::Value, ExprIdToken::Hash>;
 
-    ProgramMemory() = default;
+    ProgramMemory() : mValues(new Map()) {}
 
-    explicit ProgramMemory(Map values) : mValues(std::move(values)) {}
+    explicit ProgramMemory(Map values) : mValues(new Map(std::move(values))) {}
 
     void setValue(const Token* expr, const ValueFlow::Value& value);
     const ValueFlow::Value* getValue(nonneg int exprid, bool impossible = false) const;
@@ -131,22 +132,12 @@ struct ProgramMemory {
 
     void replace(ProgramMemory pm);
 
-    void insert(const ProgramMemory &pm);
-
-    Map::iterator begin() {
-        return mValues.begin();
-    }
-
-    Map::iterator end() {
-        return mValues.end();
-    }
-
     Map::const_iterator begin() const {
-        return mValues.begin();
+        return mValues->cbegin();
     }
 
     Map::const_iterator end() const {
-        return mValues.end();
+        return mValues->cend();
     }
 
     friend bool operator==(const ProgramMemory& x, const ProgramMemory& y) {
@@ -158,7 +149,9 @@ struct ProgramMemory {
     }
 
 private:
-    Map mValues;
+    void copyOnWrite();
+
+    std::shared_ptr<Map> mValues;
 };
 
 struct ProgramMemoryState {
@@ -168,7 +161,6 @@ struct ProgramMemoryState {
 
     explicit ProgramMemoryState(const Settings* s);
 
-    void insert(const ProgramMemory &pm, const Token* origin = nullptr);
     void replace(ProgramMemory pm, const Token* origin = nullptr);
 
     void addState(const Token* tok, const ProgramMemory::Map& vars);

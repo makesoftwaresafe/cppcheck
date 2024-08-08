@@ -323,7 +323,7 @@ void ProjectFileDialog::loadFromProjectFile(const ProjectFile *projectFile)
     mUI->mBtnSafeClasses->setChecked(projectFile->safeChecks.classes);
     setExcludedPaths(projectFile->getExcludedPaths());
     setLibraries(projectFile->getLibraries());
-    const QString platform = projectFile->getPlatform();
+    const QString& platform = projectFile->getPlatform();
     if (platform.endsWith(".xml")) {
         int i;
         for (i = numberOfBuiltinPlatforms; i < mUI->mComboBoxPlatform->count(); ++i) {
@@ -395,11 +395,21 @@ void ProjectFileDialog::loadFromProjectFile(const ProjectFile *projectFile)
     }
 
     mUI->mMisraCpp->setEnabled(mPremium);
+    mUI->mMisraCppVersion->setVisible(mPremium);
+    if (projectFile->getCodingStandards().contains(CODING_STANDARD_MISRA_CPP_2008)) {
+        mUI->mMisraCpp->setChecked(true);
+        mUI->mMisraCppVersion->setCurrentIndex(0);
+    }
+    else if (projectFile->getCodingStandards().contains(CODING_STANDARD_MISRA_CPP_2023)) {
+        mUI->mMisraCpp->setChecked(true);
+        mUI->mMisraCppVersion->setCurrentIndex(1);
+    } else {
+        mUI->mMisraCpp->setChecked(false);
+        mUI->mMisraCppVersion->setCurrentIndex(1);
+    }
+
     mUI->mMisraCppVersion->setEnabled(mUI->mMisraCpp->isChecked());
     connect(mUI->mMisraCpp, &QCheckBox::toggled, mUI->mMisraCppVersion, &QComboBox::setEnabled);
-
-    mUI->mMisraCppVersion->setVisible(mPremium);
-    mUI->mMisraCppVersion->setCurrentIndex(projectFile->getCodingStandards().contains(CODING_STANDARD_MISRA_CPP_2023));
 
     mUI->mCertC2016->setChecked(mPremium && projectFile->getCodingStandards().contains(CODING_STANDARD_CERT_C));
     mUI->mCertCpp2016->setChecked(mPremium && projectFile->getCodingStandards().contains(CODING_STANDARD_CERT_CPP));
