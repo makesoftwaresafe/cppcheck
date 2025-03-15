@@ -276,7 +276,7 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
         // TODO: verbose log which files were ignored?
         const PathMatch matcher(ignored, caseSensitive);
         for (const std::string &pathname : pathnamesRef) {
-            const std::string err = FileLister::recursiveAddFiles(filesResolved, Path::toNativeSeparators(pathname), mSettings.library.markupExtensions(), matcher);
+            const std::string err = FileLister::recursiveAddFiles(filesResolved, Path::toNativeSeparators(pathname), mSettings.library.markupExtensions(), matcher, mSettings.debugignore);
             if (!err.empty()) {
                 // TODO: bail out?
                 mLogger.printMessage(err);
@@ -422,11 +422,18 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             return Result::Exit;
         }
 
+        if (std::strcmp(argv[i], "--filesdir") == 0) {
+#ifdef FILESDIR
+            mLogger.printRaw(FILESDIR); // TODO: should not include newline
+#endif
+            return Result::Exit;
+        }
+
         if (std::strcmp(argv[i], "--version") == 0) {
             if (!loadCppcheckCfg())
                 return Result::Fail;
             const std::string version = getVersion();
-            mLogger.printRaw(version);
+            mLogger.printRaw(version); // TODO: should not include newline
             return Result::Exit;
         }
     }
@@ -536,6 +543,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             else if (std::strcmp(argv[i], "--check-config") == 0)
                 mSettings.checkConfiguration = true;
 
+            else if (std::strcmp(argv[i], "--check-headers") == 0)
+                mSettings.checkHeaders = true;
+
             // Check level
             else if (std::strncmp(argv[i], "--check-level=", 14) == 0) {
                 Settings::CheckLevel level = Settings::CheckLevel::normal;
@@ -618,6 +628,10 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             // Show debug warnings for lookup for configuration files
             else if (std::strcmp(argv[i], "--debug-clang-output") == 0)
                 mSettings.debugClangOutput = true;
+
+            // Show debug messages for ignored files
+            else if (std::strcmp(argv[i], "--debug-ignore") == 0)
+                mSettings.debugignore = true;
 
             // Show --debug output after the first simplifications
             else if (std::strcmp(argv[i], "--debug") == 0 ||
@@ -821,15 +835,6 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 }
 
                 if (!path.empty()) {
-                    path = Path::removeQuotationMarks(std::move(path));
-                    path = Path::simplifyPath(std::move(path));
-
-                    // TODO: this only works when it exists
-                    if (Path::isDirectory(path)) {
-                        // If directory name doesn't end with / or \, add it
-                        if (!endsWith(path, '/'))
-                            path += '/';
-                    }
                     mIgnoredPaths.emplace_back(std::move(path));
                 }
             }
@@ -995,6 +1000,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 if (!parseNumberArg(argv[i], 25, mSettings.maxTemplateRecursion))
                     return Result::Fail;
             }
+
+            else if (std::strcmp(argv[i], "--no-check-headers") == 0)
+                mSettings.checkHeaders = false;
 
             // undocumented option for usage in Python tests to indicate that no build dir should be injected
             else if (std::strcmp(argv[i], "--no-cppcheck-build-dir") == 0) {
@@ -1590,11 +1598,27 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         return Result::Fail;
     }
 
+    for (auto& path : mIgnoredPaths)
+    {
+        path = Path::removeQuotationMarks(std::move(path));
+        path = Path::simplifyPath(std::move(path));
+
+        bool isdir = false;
+        if (!Path::exists(path, &isdir) && mSettings.debugignore)
+            std::cout << "path to ignore does not exist: " << path << std::endl;
+        // TODO: this only works when it exists
+        if (isdir) {
+            // If directory name doesn't end with / or \, add it
+            if (!endsWith(path, '/'))
+                path += '/';
+        }
+    }
+
     if (!project.guiProject.pathNames.empty())
         mPathNames = project.guiProject.pathNames;
 
     if (!project.fileSettings.empty()) {
-        project.ignorePaths(mIgnoredPaths);
+        project.ignorePaths(mIgnoredPaths, mSettings.debugignore);
         if (project.fileSettings.empty()) {
             mLogger.printError("no C or C++ source files found.");
             mLogger.printMessage("all paths were ignored"); // TODO: log this differently?

@@ -1442,14 +1442,14 @@ bool TemplateSimplifier::getTemplateNamePositionTemplateFunction(const Token *to
         } else if (Token::Match(tok->next(), "%type% <")) {
             const Token *closing = tok->tokAt(2)->findClosingBracket();
             if (closing) {
-                if (closing->strAt(1) == "(" && TokenList::isFunctionHead(closing->next(), ";|{|:"))
+                if (closing->strAt(1) == "(" && TokenList::isFunctionHead(closing->next(), ";{:"))
                     return true;
                 while (tok->next() && tok->next() != closing) {
                     tok = tok->next();
                     namepos++;
                 }
             }
-        } else if (Token::Match(tok->next(), "%type% (") && TokenList::isFunctionHead(tok->tokAt(2), ";|{|:")) {
+        } else if (Token::Match(tok->next(), "%type% (") && TokenList::isFunctionHead(tok->tokAt(2), ";{:")) {
             return true;
         }
         tok = tok->next();
@@ -3186,7 +3186,7 @@ bool TemplateSimplifier::simplifyTemplateInstantiations(
             continue;
 
         Token * const tok2 = instantiation.token();
-        if (!mTokenList.getFiles().empty())
+        if ((mSettings.reportProgress != -1) && !mTokenList.getFiles().empty())
             mErrorLogger.reportProgress(mTokenList.getFiles()[0], "TemplateSimplifier::simplifyTemplateInstantiations()", tok2->progressValue());
 
         if (maxtime > 0 && std::time(nullptr) > maxtime) {
@@ -3262,7 +3262,7 @@ bool TemplateSimplifier::simplifyTemplateInstantiations(
     // TODO: remove the specialized check and handle all uninstantiated templates someday.
     if (!instantiated && specialized) {
         auto * tok2 = const_cast<Token *>(templateDeclaration.nameToken());
-        if (!mTokenList.getFiles().empty())
+        if ((mSettings.reportProgress != -1) && !mTokenList.getFiles().empty())
             mErrorLogger.reportProgress(mTokenList.getFiles()[0], "TemplateSimplifier::simplifyTemplateInstantiations()", tok2->progressValue());
 
         if (maxtime > 0 && std::time(nullptr) > maxtime) {

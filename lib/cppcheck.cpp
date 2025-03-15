@@ -400,7 +400,7 @@ static void createDumpFile(const Settings& settings,
           << " pointer_bit=\"" << (settings.platform.sizeof_pointer * settings.platform.char_bit) << '\"'
           << " wchar_t_bit=\"" << (settings.platform.sizeof_wchar_t * settings.platform.char_bit) << '\"'
           << " size_t_bit=\"" << (settings.platform.sizeof_size_t * settings.platform.char_bit) << '\"'
-          << "/>" << '\n';
+          << "/>\n";
 }
 
 static std::string detectPython(const CppCheck::ExecuteCmdFn &executeCommand)
@@ -680,7 +680,7 @@ unsigned int CppCheck::checkClang(const FileWithDetails &file)
                               file.spath();
     const std::string redirect2 = clangStderr.empty() ? "2>&1" : ("2> " + clangStderr);
     if (mSettings.verbose && !mSettings.quiet) {
-        mErrorLogger.reportOut(exe + " " + args2);
+        mErrorLogger.reportOut(exe + " " + args2, Color::Reset);
     }
 
     std::string output2;
@@ -736,6 +736,7 @@ unsigned int CppCheck::checkClang(const FileWithDetails &file)
         std::string dumpFile;
         createDumpFile(mSettings, file, fdump, dumpFile);
         if (fdump.is_open()) {
+            fdump << getLibraryDumpData();
             // TODO: use tinyxml2 to create XML
             fdump << "<dump cfg=\"\">\n";
             for (const ErrorMessage& errmsg: compilerWarnings)
@@ -744,7 +745,6 @@ unsigned int CppCheck::checkClang(const FileWithDetails &file)
             fdump << "    <c version=\"" << mSettings.standards.getC() << "\"/>\n";
             fdump << "    <cpp version=\"" << mSettings.standards.getCPP() << "\"/>\n";
             fdump << "  </standards>\n";
-            fdump << getLibraryDumpData();
             tokenizer.dump(fdump);
             fdump << "</dump>\n";
             fdump << "</dumps>\n";
@@ -866,19 +866,19 @@ unsigned int CppCheck::checkFile(const FileWithDetails& file, const std::string 
         mErrorLogger.reportOut(std::string("Checking ") + fixedpath + ' ' + cfgname + std::string("..."), Color::FgGreen);
 
         if (mSettings.verbose) {
-            mErrorLogger.reportOut("Defines:" + mSettings.userDefines);
+            mErrorLogger.reportOut("Defines:" + mSettings.userDefines, Color::Reset);
             std::string undefs;
             for (const std::string& U : mSettings.userUndefs) {
                 if (!undefs.empty())
                     undefs += ';';
                 undefs += ' ' + U;
             }
-            mErrorLogger.reportOut("Undefines:" + undefs);
+            mErrorLogger.reportOut("Undefines:" + undefs, Color::Reset);
             std::string includePaths;
             for (const std::string &I : mSettings.includePaths)
                 includePaths += " -I" + I;
-            mErrorLogger.reportOut("Includes:" + includePaths);
-            mErrorLogger.reportOut(std::string("Platform:") + mSettings.platform.toString());
+            mErrorLogger.reportOut("Includes:" + includePaths, Color::Reset);
+            mErrorLogger.reportOut(std::string("Platform:") + mSettings.platform.toString(), Color::Reset);
         }
     }
 
@@ -1065,6 +1065,7 @@ unsigned int CppCheck::checkFile(const FileWithDetails& file, const std::string 
         std::string dumpFile;
         createDumpFile(mSettings, file, fdump, dumpFile);
         if (fdump.is_open()) {
+            fdump << getLibraryDumpData();
             fdump << dumpProlog;
             if (!mSettings.dump)
                 filesDeleter.addFile(dumpFile);
@@ -1113,7 +1114,7 @@ unsigned int CppCheck::checkFile(const FileWithDetails& file, const std::string 
                 pos = 0;
                 while ((pos = codeWithoutCfg.find(Preprocessor::macroChar,pos)) != std::string::npos)
                     codeWithoutCfg[pos] = ' ';
-                mErrorLogger.reportOut(codeWithoutCfg);
+                mErrorLogger.reportOut(codeWithoutCfg, Color::Reset);
                 continue;
             }
 
