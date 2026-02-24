@@ -2702,7 +2702,9 @@ private:
         check("void f(std::string str) {\n"
               "    std::string s2 = str;\n"
               "}");
-        ASSERT_EQUALS("[test.cpp:1:20]: (performance) Function parameter 'str' should be passed by const reference. [passedByValue]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:17]: (performance, inconclusive) Use const reference for 's2' to avoid unnecessary data copying. [redundantCopyLocalConst]\n"
+                      "[test.cpp:1:20]: (performance) Function parameter 'str' should be passed by const reference. [passedByValue]\n",
+                      errout_str());
 
         check("void f(std::string str) {\n"
               "    std::string& s2 = str;\n"
@@ -9905,6 +9907,43 @@ private:
               "    if (s.empty()) {}\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:6:16]: (performance, inconclusive) Use const reference for 's' to avoid unnecessary data copying. [redundantCopyLocalConst]\n", errout_str());
+
+        check("void f1(const std::string& s) {\n"
+              "    std::string s1 = s;\n"
+              "    (void)s1;\n"
+              "}\n"
+              "void f2() {\n"
+              "    const std::string s;\n"
+              "    std::string s1 = s;\n"
+              "    (void)s1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:17]: (performance, inconclusive) Use const reference for 's1' to avoid unnecessary data copying. [redundantCopyLocalConst]\n"
+                      "[test.cpp:7:17]: (performance, inconclusive) Use const reference for 's1' to avoid unnecessary data copying. [redundantCopyLocalConst]\n",
+                      errout_str());
+
+        check("struct S {\n"
+              "    std::string m;\n"
+              "    int f(const std::string& s);\n"
+              "};\n"
+              "int S::f(const std::string& s) {\n"
+              "    std::string c = s;\n"
+              "    m.clear();\n"
+              "    return c.size();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n"
+              "    std::string m;\n"
+              "    int f(std::string s);\n"
+              "};\n"
+              "int S::f(std::string s) {\n"
+              "    s += m;\n"
+              "    std::string c = s;\n"
+              "    m.clear();\n"
+              "    return c.size();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:7:17]: (performance, inconclusive) Use const reference for 'c' to avoid unnecessary data copying. [redundantCopyLocalConst]\n",
+                      errout_str());
     }
 
     void checkNegativeShift() {
