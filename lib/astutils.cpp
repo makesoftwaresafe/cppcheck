@@ -2466,17 +2466,6 @@ static bool isTrivialConstructor(const Token* tok)
     return false;
 }
 
-static bool isArray(const Token* tok)
-{
-    if (!tok)
-        return false;
-    if (tok->variable())
-        return tok->variable()->isArray();
-    if (Token::simpleMatch(tok, "."))
-        return isArray(tok->astOperand2());
-    return false;
-}
-
 bool isMutableExpression(const Token* tok)
 {
     if (!tok)
@@ -2545,18 +2534,10 @@ bool isVariableChangedByFunctionCall(const Token *tok, int indirect, const Setti
         const Library::ArgumentChecks::Direction argDirection = settings.library.getArgDirection(tok, 1 + argnr, indirect);
         if (argDirection == Library::ArgumentChecks::Direction::DIR_IN)
             return false;
-        if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT)
+        if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT || argDirection == Library::ArgumentChecks::Direction::DIR_INOUT)
             return true;
 
         const bool requireNonNull = settings.library.isnullargbad(tok, 1 + argnr);
-        if (argDirection == Library::ArgumentChecks::Direction::DIR_INOUT) {
-            if (indirect == 0 && isArray(tok1))
-                return true;
-            const bool requireInit = settings.library.isuninitargbad(tok, 1 + argnr);
-            // Assume that if the variable must be initialized then the indirection is 1
-            if (indirect > 0 && requireInit && requireNonNull)
-                return true;
-        }
         if (Token::simpleMatch(tok->tokAt(-2), "std :: tie"))
             return true;
         // if the library says 0 is invalid
