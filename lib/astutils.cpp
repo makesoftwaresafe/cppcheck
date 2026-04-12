@@ -1807,21 +1807,31 @@ bool isSameExpression(bool macro, const Token *tok1, const Token *tok2, const Se
     return commutativeEquals;
 }
 
-static bool isZeroBoundCond(const Token * const cond)
+static bool isZeroBoundCond(const Token * const cond, bool reverse)
 {
-    if (cond == nullptr)
+    if (cond == nullptr || !cond->isBinaryOp())
         return false;
+
+    const Token* op = reverse ? cond->astOperand1() : cond->astOperand2();
+    if (!op->hasKnownIntValue())
+        return false;
+
     // Assume unsigned
-    // TODO: Handle reverse conditions
-    const bool isZero = cond->astOperand2()->getValue(0);
-    if (cond->str() == "==" || cond->str() == ">=")
+    const bool isZero = op->getKnownIntValue() == 0;
+    std::string cmp = cond->str();
+    if (reverse) {
+        if (cmp[0] == '>')
+            cmp[0] = '<';
+        else if (cmp[0] == '<')
+            cmp[0] = '>';
+    }
+
+    if (cmp == "==" || cmp == ">=")
         return isZero;
-    if (cond->str() == "<=")
+    if (cmp == "<=")
         return true;
-    if (cond->str() == "<")
+    if (cmp == "<")
         return !isZero;
-    if (cond->str() == ">")
-        return false;
     return false;
 }
 
@@ -1885,7 +1895,7 @@ bool isOppositeCond(bool isNot, const Token * const cond1, const Token * const c
             if (isSameExpression(true, cond1->astOperand2(), cond2->astOperand2(), settings, pure, followVar, errors))
                 return isDifferentKnownValues(cond1->astOperand1(), cond2->astOperand1());
         }
-        // TODO: Handle reverse conditions
+
         if (Library::isContainerYield(cond1, Library::Container::Yield::EMPTY, "empty") &&
             Library::isContainerYield(cond2->astOperand1(), Library::Container::Yield::SIZE, "size") &&
             isSameExpression(true,
@@ -1895,7 +1905,19 @@ bool isOppositeCond(bool isNot, const Token * const cond1, const Token * const c
                              pure,
                              followVar,
                              errors)) {
-            return !isZeroBoundCond(cond2);
+            return !isZeroBoundCond(cond2, false);
+        }
+
+        if (Library::isContainerYield(cond1, Library::Container::Yield::EMPTY, "empty") &&
+            Library::isContainerYield(cond2->astOperand2(), Library::Container::Yield::SIZE, "size") &&
+            isSameExpression(true,
+                             cond1->astOperand1()->astOperand1(),
+                             cond2->astOperand2()->astOperand1()->astOperand1(),
+                             settings,
+                             pure,
+                             followVar,
+                             errors)) {
+            return !isZeroBoundCond(cond2, true);
         }
 
         if (Library::isContainerYield(cond2, Library::Container::Yield::EMPTY, "empty") &&
@@ -1907,7 +1929,19 @@ bool isOppositeCond(bool isNot, const Token * const cond1, const Token * const c
                              pure,
                              followVar,
                              errors)) {
-            return !isZeroBoundCond(cond1);
+            return !isZeroBoundCond(cond1, false);
+        }
+
+        if (Library::isContainerYield(cond2, Library::Container::Yield::EMPTY, "empty") &&
+            Library::isContainerYield(cond1->astOperand2(), Library::Container::Yield::SIZE, "size") &&
+            isSameExpression(true,
+                             cond2->astOperand1()->astOperand1(),
+                             cond1->astOperand2()->astOperand1()->astOperand1(),
+                             settings,
+                             pure,
+                             followVar,
+                             errors)) {
+            return !isZeroBoundCond(cond1, true);
         }
     }
 
