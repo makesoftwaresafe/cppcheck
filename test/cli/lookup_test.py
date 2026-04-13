@@ -767,12 +767,14 @@ def test_addon_lookup(tmpdir):
     exitcode, stdout, stderr, exe = cppcheck_ex(['--debug-lookup=addon', '--addon=misra', test_file])
     exepath = os.path.dirname(exe)
     exepath_sep = exepath + os.path.sep
+    if sys.platform == 'win32':
+        exepath_sep = exepath_sep.replace('\\', '/')
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
         "looking for addon 'misra.py'",
         "looking for addon '{}misra.py'".format(exepath_sep),
-        "looking for addon '{}addons/misra.py'".format(exepath_sep),  # TODO: mixed separators
+        "looking for addon '{}addons/misra.py'".format(exepath_sep),
         'Checking {} ...'.format(test_file)
     ]
 
@@ -785,12 +787,14 @@ def test_addon_lookup_ext(tmpdir):
     exitcode, stdout, stderr, exe = cppcheck_ex(['--debug-lookup=addon', '--addon=misra.py', test_file])
     exepath = os.path.dirname(exe)
     exepath_sep = exepath + os.path.sep
+    if sys.platform == 'win32':
+        exepath_sep = exepath_sep.replace('\\', '/')
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
         "looking for addon 'misra.py'",
         "looking for addon '{}misra.py'".format(exepath_sep),
-        "looking for addon '{}addons/misra.py'".format(exepath_sep),  # TODO: mixed separators
+        "looking for addon '{}addons/misra.py'".format(exepath_sep),
         'Checking {} ...'.format(test_file)
     ]
 
@@ -803,12 +807,14 @@ def test_addon_lookup_notfound(tmpdir):
     exitcode, stdout, _, exe = cppcheck_ex(['--debug-lookup=addon', '--addon=none', test_file])
     exepath = os.path.dirname(exe)
     exepath_sep = exepath + os.path.sep
+    if sys.platform == 'win32':
+        exepath_sep = exepath_sep.replace('\\', '/')
     assert exitcode == 1, stdout
     lines = stdout.splitlines()
     assert lines == [
         "looking for addon 'none.py'",
         "looking for addon '{}none.py'".format(exepath_sep),
-        "looking for addon '{}addons/none.py'".format(exepath_sep),  # TODO: mixed separators
+        "looking for addon '{}addons/none.py'".format(exepath_sep),
         'Did not find addon none.py'
     ]
 
@@ -819,13 +825,15 @@ def test_addon_lookup_notfound_project(tmpdir):  # #13940 / #13941
     exitcode, stdout, _, exe = cppcheck_ex(['--debug-lookup=addon', '--addon=none', '--project={}'.format(project_file)])
     exepath = os.path.dirname(exe)
     exepath_sep = exepath + os.path.sep
+    if sys.platform == 'win32':
+        exepath_sep = exepath_sep.replace('\\', '/')
     assert exitcode == 1, stdout
     lines = stdout.splitlines()
     assert lines == [
         # TODO: needs to look relative to the project file first
         "looking for addon 'none.py'",
         "looking for addon '{}none.py'".format(exepath_sep),
-        "looking for addon '{}addons/none.py'".format(exepath_sep),  # TODO: mixed separators
+        "looking for addon '{}addons/none.py'".format(exepath_sep),
         'Did not find addon none.py'
     ]
 
@@ -836,12 +844,14 @@ def test_addon_lookup_notfound_compdb(tmpdir):
     exitcode, stdout, _, exe = cppcheck_ex(['--debug-lookup=addon', '--addon=none', '--project={}'.format(compdb_file)])
     exepath = os.path.dirname(exe)
     exepath_sep = exepath + os.path.sep
+    if sys.platform == 'win32':
+        exepath_sep = exepath_sep.replace('\\', '/')
     assert exitcode == 1, stdout
     lines = stdout.splitlines()
     assert lines == [
         "looking for addon 'none.py'",
         "looking for addon '{}none.py'".format(exepath_sep),
-        "looking for addon '{}addons/none.py'".format(exepath_sep),  # TODO: mixed separators
+        "looking for addon '{}addons/none.py'".format(exepath_sep),
         'Did not find addon none.py'
     ]
 
@@ -854,12 +864,14 @@ def test_addon_lookup_ext_notfound(tmpdir):
     exitcode, stdout, _, exe = cppcheck_ex(['--debug-lookup=addon', '--addon=none.py', test_file])
     exepath = os.path.dirname(exe)
     exepath_sep = exepath + os.path.sep
+    if sys.platform == 'win32':
+        exepath_sep = exepath_sep.replace('\\', '/')
     assert exitcode == 1, stdout
     lines = stdout.splitlines()
     assert lines == [
         "looking for addon 'none.py'",
         "looking for addon '{}none.py'".format(exepath_sep),
-        "looking for addon '{}addons/none.py'".format(exepath_sep),  # TODO: mixed separators
+        "looking for addon '{}addons/none.py'".format(exepath_sep),
         'Did not find addon none.py'
     ]
 
@@ -872,12 +884,14 @@ def test_addon_lookup_relative_notfound(tmpdir):
     exitcode, stdout, _, exe = cppcheck_ex(['--debug-lookup=addon', '--addon=addon/misra.py', test_file])
     exepath = os.path.dirname(exe)
     exepath_sep = exepath + os.path.sep
+    if sys.platform == 'win32':
+        exepath_sep = exepath_sep.replace('\\', '/')
     assert exitcode == 1, stdout
     lines = stdout.splitlines()
     assert lines == [
         "looking for addon 'addon/misra.py'",
         "looking for addon '{}addon/misra.py'".format(exepath_sep),
-        "looking for addon '{}addons/addon/misra.py'".format(exepath_sep),  # TODO: mixed separators
+        "looking for addon '{}addons/addon/misra.py'".format(exepath_sep),
         'Did not find addon addon/misra.py'
     ]
 
@@ -891,12 +905,14 @@ def test_addon_lookup_relative_noext_notfound(tmpdir):
     exitcode, stdout, _, exe = cppcheck_ex(['--debug-lookup=addon', '--addon=addon/misra', test_file])
     exepath = os.path.dirname(exe)
     exepath_sep = exepath + os.path.sep
+    if sys.platform == 'win32':
+        exepath_sep = exepath_sep.replace('\\', '/')
     assert exitcode == 1, stdout
     lines = stdout.splitlines()
     assert lines == [
         "looking for addon 'addon/misra.py'",
         "looking for addon '{}addon/misra.py'".format(exepath_sep),
-        "looking for addon '{}addons/addon/misra.py'".format(exepath_sep),  # TODO: mixed separators
+        "looking for addon '{}addons/addon/misra.py'".format(exepath_sep),
         'Did not find addon addon/misra.py'
     ]
 
@@ -1006,12 +1022,14 @@ def test_addon_lookup_nofile(tmpdir):
     exitcode, stdout, stderr, exe = cppcheck_ex(['--debug-lookup=addon', '--addon=misra', test_file])
     exepath = os.path.dirname(exe)
     exepath_sep = exepath + os.path.sep
+    if sys.platform == 'win32':
+        exepath_sep = exepath_sep.replace('\\', '/')
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
         "looking for addon 'misra.py'",
         "looking for addon '{}misra.py'".format(exepath_sep),
-        "looking for addon '{}addons/misra.py'".format(exepath_sep),  # TODO: mixed separators
+        "looking for addon '{}addons/misra.py'".format(exepath_sep),
         'Checking {} ...'.format(test_file)
     ]
 

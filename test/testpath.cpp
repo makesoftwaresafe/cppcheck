@@ -203,6 +203,8 @@ private:
         //ASSERT_EQUALS("", Path::join("S:/a", "S:/b"));
         //ASSERT_EQUALS("", Path::join("S:/a", "S:\\b"));
         //ASSERT_EQUALS("", Path::join("S:/a", "/b"));
+
+        ASSERT_EQUALS("a/b/c", Path::join("a", "b", "c"));
     }
 
     void isDirectory() const {
