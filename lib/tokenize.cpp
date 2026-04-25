@@ -4496,6 +4496,10 @@ static void setVarIdStructMembers(Token *&tok1,
                     tok->varId(it->second);
                 }
             }
+            if (Token::Match(tok, "%name% = { . %name% =|{")) {
+                setVarIdStructMembers(tok, structMembers, varId);
+                tok = tok->linkAt(2);
+            }
             tok = tok->next();
         }
 
