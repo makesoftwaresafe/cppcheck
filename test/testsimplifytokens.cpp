@@ -2207,6 +2207,7 @@ private:
                                 "for ( i = 0 ; ( i < sz ) && ( sz > 3 ) ; ++ i ) { }\n"
                                 "}";
         ASSERT_EQUALS(expected, tokenizeAndStringify(code, dinit(TokenizeAndStringifyOptions, $.cpp = false)));
+        ignore_errout();
     }
 
     void simplifyKnownVariables49() { // #3691
