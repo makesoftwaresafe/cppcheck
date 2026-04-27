@@ -2911,6 +2911,9 @@ private:
         ASSERT_EQUALS("", errout_str());
 
         check("struct X { int a[5]; }; void f(const X v);");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct X { int a[5]; }; void f(const X v) { (void) v; }");
         ASSERT_EQUALS("[test.cpp:1:40]: (performance) Function parameter 'v' should be passed by const reference. [passedByValue]\n", errout_str());
 
         check("extern \"C\" { struct X { int a[5]; }; void f(const X v); }");
@@ -4108,6 +4111,14 @@ private:
               "    int*& pp{ p };\n"
               "    if (*pp) {}\n"
               "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("class C {\n"
+              "public:\n"
+              "    explicit C(const std::string s);\n"
+              "private:\n"
+              "    std::string _s;\n"
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
