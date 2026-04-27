@@ -700,12 +700,12 @@ private:
         std::string name;
         std::string originalName;
         std::string filename;
-        int lineNumber;
-        int column;
+        int lineNumber{};
+        int column{};
         int tagLine{-1};
         int tagColumn{-1};
-        bool used;
-        bool isFunctionPointer;
+        bool used{};
+        bool isFunctionPointer{};
         std::vector<TypedefToken> typedefInfoTokens;
     };
     std::vector<TypedefInfo> mTypedefInfo;
