@@ -8962,6 +8962,8 @@ void Tokenizer::findGarbageCode() const
         const Token* const endTok = tok->linkAt(1);
         for (tok = tok->tokAt(2); tok != endTok; tok = tok->next()) {
             if (const Token* lam = findLambdaEndTokenWithoutAST(tok)) {
+                if (lam == endTok)
+                    break;
                 tok = lam;
                 continue;
             }
