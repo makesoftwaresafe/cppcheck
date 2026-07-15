@@ -1947,6 +1947,9 @@ void TokenList::validateAst(bool print) const
         if ((tok->isAssignmentOp() || tok->isComparisonOp() || Token::Match(tok,"[|^/%]")) && tok->astOperand1() && !tok->astOperand2())
             throw InternalError(tok, "Syntax Error: AST broken, binary operator has only one operand.", InternalError::AST);
 
+        if (!(tok->astOperand1() && tok->astOperand2()) && ((isC() && tok->str() == "&&") || Token::Match(tok, "%or%|%oror%")))
+            throw InternalError(tok, "Syntax Error: AST broken, binary operator is missing operand(s).", InternalError::AST);
+
         // Syntax error if we encounter "?" with operand2 that is not ":"
         if (tok->str() == "?") {
             if (!tok->astOperand1() || !tok->astOperand2())
