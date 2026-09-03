@@ -890,7 +890,8 @@ simplecpp::TokenList Preprocessor::preprocess(const std::string &cfgStr, std::ve
     mMacroUsage = std::move(macroUsage);
     mIfCond = std::move(ifCond);
 
-    tokens2.removeComments();
+    if (!mSettings.keepComments)
+        tokens2.removeComments();
 
     return tokens2;
 }
@@ -919,6 +920,13 @@ std::string Preprocessor::getcode(const std::string &cfgStr, std::vector<std::st
         if (!tok->macro.empty())
             ret << Preprocessor::macroChar;
         ret << tok->str();
+
+        if (tok->comment)
+            line += std::count_if(tok->str().cbegin(),
+                                  tok->str().cend(),
+                                  [](char c) {
+                return c == '\n';
+            });
     }
 
     return ret.str();
